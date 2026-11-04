@@ -22,14 +22,18 @@ import com.example.taskee.ui.components.*
 import com.example.taskee.ui.theme.*
 import kotlinx.coroutines.launch
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TaskeeHomeScreen(
     viewModel: TaskeeViewModel,
     modifier: Modifier = Modifier
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    var showTaskBottomSheet by remember { mutableStateOf(false) }
 
     // Handle undo snackbar
     LaunchedEffect(uiState.lastDeletedTask) {
@@ -58,7 +62,13 @@ fun TaskeeHomeScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { viewModel.openCreate() },
+                onClick = {
+                    if (uiState.selectedTab == 0) {
+                        showTaskBottomSheet = true
+                    } else {
+                        viewModel.openCreate(1)
+                    }
+                },
                 containerColor = AccentLime,
                 contentColor = TextDark,
                 shape = CircleShape,
@@ -68,7 +78,7 @@ fun TaskeeHomeScreen(
             ) {
                 Icon(
                     imageVector = Icons.Default.Add,
-                    contentDescription = "Add task or note",
+                    contentDescription = if (uiState.selectedTab == 0) "Create new task" else "Create new note",
                     modifier = Modifier.size(28.dp)
                 )
             }
@@ -91,80 +101,10 @@ fun TaskeeHomeScreen(
             Spacer(modifier = Modifier.height(10.dp))
 
             if (uiState.selectedTab == 0) {
-                // Tasks Tab
-                val pendingTasks = uiState.tasks.filter { !it.isCompleted }
-                val completedTasks = uiState.tasks.filter { it.isCompleted }
-
-                if (uiState.tasks.isEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(bottom = 60.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Image(
-                                painter = painterResource(id = R.drawable.img_nodata),
-                                contentDescription = "No tasks",
-                                modifier = Modifier.size(180.dp)
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text(
-                                text = "No tasks yet! Tap + to create one.",
-                                color = TextSecondary,
-                                fontSize = 15.sp,
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
-                    }
-                } else {
-                    LazyColumn(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .testTag("task_list"),
-                        contentPadding = PaddingValues(bottom = 80.dp)
-                    ) {
-                        if (pendingTasks.isNotEmpty()) {
-                            item {
-                                Text(
-                                    text = "Pending (${pendingTasks.size})",
-                                    color = TextSecondary,
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
-                                )
-                            }
-                            items(pendingTasks, key = { it.id }) { task ->
-                                TaskItemCard(
-                                    task = task,
-                                    onToggleComplete = { viewModel.toggleTaskComplete(task.id) },
-                                    onClick = { viewModel.openEditTask(task) },
-                                    onDelete = { viewModel.deleteTask(task.id) }
-                                )
-                            }
-                        }
-
-                        if (completedTasks.isNotEmpty()) {
-                            item {
-                                Text(
-                                    text = "Completed (${completedTasks.size})",
-                                    color = TextMuted,
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp)
-                                )
-                            }
-                            items(completedTasks, key = { it.id }) { task ->
-                                TaskItemCard(
-                                    task = task,
-                                    onToggleComplete = { viewModel.toggleTaskComplete(task.id) },
-                                    onClick = { viewModel.openEditTask(task) },
-                                    onDelete = { viewModel.deleteTask(task.id) }
-                                )
-                            }
-                        }
-                    }
-                }
+                TasksScreen(
+                    viewModel = viewModel,
+                    modifier = Modifier.weight(1f)
+                )
             } else {
                 // Notes Tab
                 if (uiState.notes.isEmpty()) {
@@ -190,26 +130,39 @@ fun TaskeeHomeScreen(
                         }
                     }
                 } else {
-                    val currentNote = uiState.notes[uiState.currentNoteIndex]
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(bottom = 80.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        NoteSwipeCard(
-                            note = currentNote,
-                            currentIndex = uiState.currentNoteIndex,
-                            totalNotes = uiState.notes.size,
-                            onPrevious = { viewModel.previousNote() },
-                            onNext = { viewModel.nextNote() },
-                            onEdit = { viewModel.openEditNote(currentNote) },
-                            onDelete = { viewModel.deleteNote(currentNote.id) }
-                        )
+                    val safeIndex = uiState.currentNoteIndex.coerceIn(0, (uiState.notes.size - 1).coerceAtLeast(0))
+                    val currentNote = uiState.notes.getOrNull(safeIndex) ?: uiState.notes.firstOrNull()
+                    if (currentNote != null) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(bottom = 80.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            NoteSwipeCard(
+                                note = currentNote,
+                                currentIndex = safeIndex,
+                                totalNotes = uiState.notes.size,
+                                onPrevious = { viewModel.previousNote() },
+                                onNext = { viewModel.nextNote() },
+                                onEdit = { viewModel.openEditNote(currentNote) },
+                                onDelete = { viewModel.deleteNote(currentNote.id) }
+                            )
+                        }
                     }
                 }
             }
         }
+    }
+
+    if (showTaskBottomSheet) {
+        CreateTaskBottomSheet(
+            onDismissRequest = { showTaskBottomSheet = false },
+            onSaveTask = { title, dueAt ->
+                viewModel.saveTask(title, dueAt)
+                showTaskBottomSheet = false
+            }
+        )
     }
 
     if (uiState.isCreateOrEditVisible) {

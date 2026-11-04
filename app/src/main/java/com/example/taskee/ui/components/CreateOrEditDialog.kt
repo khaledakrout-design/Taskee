@@ -40,16 +40,18 @@ fun CreateOrEditDialog(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    var selectedTab by remember { mutableIntStateOf(if (editingNote != null) 1 else initialTab) }
+    var selectedTab by remember(initialTab, editingNote, editingTask) {
+        mutableIntStateOf(if (editingNote != null) 1 else initialTab)
+    }
 
     // Task fields
-    var taskTitle by remember { mutableStateOf(editingTask?.title ?: "") }
-    var taskDueAtMillis by remember { mutableStateOf(editingTask?.dueAtMillis) }
-    var taskTitleError by remember { mutableStateOf(false) }
+    var taskTitle by remember(editingTask) { mutableStateOf(editingTask?.title ?: "") }
+    var taskDueAtMillis by remember(editingTask) { mutableStateOf(editingTask?.dueAtMillis) }
+    var taskTitleError by remember(editingTask) { mutableStateOf(false) }
 
     // Note fields
-    var noteContent by remember { mutableStateOf(editingNote?.content ?: "") }
-    var noteContentError by remember { mutableStateOf(false) }
+    var noteContent by remember(editingNote) { mutableStateOf(editingNote?.content ?: "") }
+    var noteContentError by remember(editingNote) { mutableStateOf(false) }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -271,6 +273,20 @@ fun CreateOrEditDialog(
                                 SimpleDateFormat("h:mm a", Locale.getDefault()).format(Date(taskDueAtMillis!!))
                             } else "Set Time"
                             Text(timeLabel, fontSize = 13.sp)
+                        }
+
+                        if (taskDueAtMillis != null) {
+                            IconButton(
+                                onClick = { taskDueAtMillis = null },
+                                modifier = Modifier.align(Alignment.CenterVertically)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Clear due date",
+                                    tint = TextSecondary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
                         }
                     }
 
