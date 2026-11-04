@@ -1,0 +1,6 @@
+{
+  "name": "Taskee",
+  "description": "Minimalist task and notes manager with local-first storage, task scheduling, due dates, swipe interactions, and clean dark UI.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
