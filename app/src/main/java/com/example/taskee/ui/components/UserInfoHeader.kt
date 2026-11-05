@@ -2,12 +2,17 @@ package com.example.taskee.ui.components
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -22,12 +27,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.taskee.R
+import com.example.taskee.ui.theme.AccentLime
+import com.example.taskee.ui.theme.BorderColor
 import com.example.taskee.ui.theme.TextPrimary
 import com.example.taskee.ui.theme.TextSecondary
 
 @Composable
 fun UserInfoHeader(
-    modifier: Modifier = Modifier
+    isDarkMode: Boolean = true,
+    onToggleTheme: () -> Unit = {},
+    modifier: Modifier = Modifier,
+    onActionClick: (() -> Unit)? = null
 ) {
     Column(
         modifier = modifier
@@ -36,7 +46,7 @@ fun UserInfoHeader(
             .testTag("user_info_header")
     ) {
         Text(
-            text = "Plan your Day !",
+            text = "Planifiez votre journée !",
             style = MaterialTheme.typography.headlineMedium.copy(
                 fontWeight = FontWeight.Bold,
                 color = TextPrimary,
@@ -50,7 +60,7 @@ fun UserInfoHeader(
         ) {
             Image(
                 painter = painterResource(id = R.drawable.img_profile),
-                contentDescription = "Profile picture",
+                contentDescription = "Photo de profil",
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .size(50.dp)
@@ -66,7 +76,7 @@ fun UserInfoHeader(
             Spacer(modifier = Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Hi, Good Morning",
+                    text = "Bonjour,",
                     style = MaterialTheme.typography.bodyMedium.copy(
                         color = TextSecondary,
                         fontSize = 14.sp
@@ -81,17 +91,43 @@ fun UserInfoHeader(
                     )
                 )
             }
+
+            // Theme Switcher Button
+            IconButton(
+                onClick = onToggleTheme,
+                modifier = Modifier
+                    .size(42.dp)
+                    .clip(CircleShape)
+                    .background(if (isDarkMode) Color.White.copy(alpha = 0.12f) else AccentLime.copy(alpha = 0.2f))
+                    .border(1.dp, BorderColor, CircleShape)
+                    .testTag("theme_switcher_button")
+            ) {
+                Icon(
+                    imageVector = if (isDarkMode) Icons.Default.LightMode else Icons.Default.DarkMode,
+                    contentDescription = if (isDarkMode) "Passer au mode clair" else "Passer au mode sombre",
+                    tint = if (isDarkMode) AccentLime else TextPrimary,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            // Action Arrow Button
             Box(
                 modifier = Modifier
+                    .size(42.dp)
                     .clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.1f))
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                    .background(Color.White.copy(alpha = 0.12f))
+                    .border(1.dp, BorderColor, CircleShape)
+                    .then(
+                        if (onActionClick != null) Modifier.clickable(onClick = onActionClick) else Modifier
+                    ),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                     contentDescription = "Action",
-                    tint = Color.White.copy(alpha = 0.6f),
+                    tint = TextPrimary.copy(alpha = 0.8f),
                     modifier = Modifier.size(16.dp)
                 )
             }

@@ -7,7 +7,7 @@ import androidx.room.RoomDatabase
 
 @Database(
     entities = [Task::class, Note::class],
-    version = 1,
+    version = 3,
     exportSchema = false
 )
 abstract class TaskeeDatabase : RoomDatabase() {
@@ -24,7 +24,7 @@ abstract class TaskeeDatabase : RoomDatabase() {
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
                     TaskeeDatabase::class.java,
-                    "taskee_database"
+                    "taskee.db"
                 )
                     .fallbackToDestructiveMigration()
                     .build()

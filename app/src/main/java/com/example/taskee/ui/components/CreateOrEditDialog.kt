@@ -3,9 +3,12 @@ package com.example.taskee.ui.components
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Close
@@ -19,23 +22,27 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.example.taskee.data.Note
+import com.example.taskee.data.Priority
 import com.example.taskee.data.Task
+import com.example.taskee.data.TaskCategory
 import com.example.taskee.ui.theme.*
 import java.text.SimpleDateFormat
 import java.util.*
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun CreateOrEditDialog(
     initialTab: Int,
     editingTask: Task?,
     editingNote: Note?,
     onDismiss: () -> Unit,
-    onSaveTask: (title: String, dueAtMillis: Long?) -> Unit,
+    onSaveTask: (title: String, dueAtMillis: Long?, priority: Priority, category: TaskCategory) -> Unit,
     onSaveNote: (content: String) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -47,6 +54,8 @@ fun CreateOrEditDialog(
     // Task fields
     var taskTitle by remember(editingTask) { mutableStateOf(editingTask?.title ?: "") }
     var taskDueAtMillis by remember(editingTask) { mutableStateOf(editingTask?.dueAtMillis) }
+    var taskPriority by remember(editingTask) { mutableStateOf(editingTask?.priority ?: Priority.MEDIUM) }
+    var taskCategory by remember(editingTask) { mutableStateOf(editingTask?.category ?: TaskCategory.PERSONAL) }
     var taskTitleError by remember(editingTask) { mutableStateOf(false) }
 
     // Note fields
@@ -69,6 +78,7 @@ fun CreateOrEditDialog(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(24.dp)
+                    .verticalScroll(rememberScrollState())
             ) {
                 // Header
                 Row(
@@ -77,10 +87,10 @@ fun CreateOrEditDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     val title = when {
-                        editingTask != null -> "Update Task"
-                        editingNote != null -> "Update Note"
-                        selectedTab == 0 -> "Create Task"
-                        else -> "Create Note"
+                        editingTask != null -> "Modifier la tâche"
+                        editingNote != null -> "Modifier la note"
+                        selectedTab == 0 -> "Créer une tâche"
+                        else -> "Créer une note"
                     }
                     Text(
                         text = title,
@@ -92,7 +102,7 @@ fun CreateOrEditDialog(
                     IconButton(onClick = onDismiss) {
                         Icon(
                             imageVector = Icons.Default.Close,
-                            contentDescription = "Close",
+                            contentDescription = "Fermer",
                             tint = TextSecondary
                         )
                     }
@@ -118,7 +128,7 @@ fun CreateOrEditDialog(
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = "Task",
+                                text = "Tâche",
                                 color = if (selectedTab == 0) TextPrimary else TextSecondary,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 14.sp
@@ -149,7 +159,7 @@ fun CreateOrEditDialog(
                 // Tab 0: Task Form
                 if (selectedTab == 0) {
                     Text(
-                        text = "Title",
+                        text = "Titre",
                         style = MaterialTheme.typography.labelLarge.copy(
                             color = TextSecondary,
                             fontWeight = FontWeight.Medium
@@ -162,10 +172,10 @@ fun CreateOrEditDialog(
                             taskTitle = it
                             if (it.isNotBlank()) taskTitleError = false
                         },
-                        placeholder = { Text("Write task title...", color = TextMuted) },
+                        placeholder = { Text("Écrivez le titre de la tâche...", color = TextMuted) },
                         isError = taskTitleError,
                         supportingText = if (taskTitleError) {
-                            { Text("Title cannot be empty", color = StatusError) }
+                            { Text("Le titre ne peut pas être vide", color = StatusError) }
                         } else null,
                         singleLine = true,
                         colors = OutlinedTextFieldDefaults.colors(
@@ -185,7 +195,116 @@ fun CreateOrEditDialog(
                     Spacer(modifier = Modifier.height(16.dp))
 
                     Text(
-                        text = "Due Date & Time",
+                        text = "Category",
+                        style = MaterialTheme.typography.labelLarge.copy(
+                            color = TextSecondary,
+                            fontWeight = FontWeight.Medium
+                        )
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        TaskCategory.entries.forEach { cat ->
+                            val isSelected = taskCategory == cat
+                            val catColor = when (cat) {
+                                TaskCategory.WORK -> Color(0xFFAB47BC)
+                                TaskCategory.PERSONAL -> Color(0xFF26A69A)
+                                TaskCategory.SHOPPING -> Color(0xFFFFA726)
+                                TaskCategory.HEALTH -> Color(0xFFEC407A)
+                                TaskCategory.OTHER -> Color(0xFF78909C)
+                            }
+
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(if (isSelected) catColor.copy(alpha = 0.2f) else CardBackground)
+                                    .border(
+                                        width = if (isSelected) 1.5.dp else 1.dp,
+                                        color = if (isSelected) catColor else BorderColor,
+                                        shape = RoundedCornerShape(12.dp)
+                                    )
+                                    .clickable { taskCategory = cat }
+                                    .padding(horizontal = 14.dp, vertical = 8.dp)
+                                    .testTag("dialog_category_${cat.name.lowercase()}"),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = cat.label,
+                                    color = if (isSelected) catColor else TextSecondary,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                    fontSize = 13.sp,
+                                    maxLines = 1
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        text = "Catégorie",
+                        style = MaterialTheme.typography.labelLarge.copy(
+                            color = TextSecondary,
+                            fontWeight = FontWeight.Medium
+                        )
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        text = "Niveau de priorité",
+                        style = MaterialTheme.typography.labelLarge.copy(
+                            color = TextSecondary,
+                            fontWeight = FontWeight.Medium
+                        )
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Priority.entries.forEach { p ->
+                            val isSelected = taskPriority == p
+                            val chipColor = when (p) {
+                                Priority.HIGH -> Color(0xFFEF5350)
+                                Priority.MEDIUM -> Color(0xFFFFB74D)
+                                Priority.LOW -> Color(0xFF64B5F6)
+                            }
+
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f, fill = false)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(if (isSelected) chipColor.copy(alpha = 0.2f) else CardBackground)
+                                    .border(
+                                        width = if (isSelected) 1.5.dp else 1.dp,
+                                        color = if (isSelected) chipColor else BorderColor,
+                                        shape = RoundedCornerShape(12.dp)
+                                    )
+                                    .clickable { taskPriority = p }
+                                    .padding(horizontal = 18.dp, vertical = 8.dp)
+                                    .testTag("dialog_priority_${p.name.lowercase()}"),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = p.label,
+                                    color = if (isSelected) chipColor else TextSecondary,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                    fontSize = 13.sp,
+                                    maxLines = 1
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        text = "Date & Heure d'échéance",
                         style = MaterialTheme.typography.labelLarge.copy(
                             color = TextSecondary,
                             fontWeight = FontWeight.Medium
@@ -218,24 +337,31 @@ fun CreateOrEditDialog(
                                 datePicker.show()
                             },
                             shape = RoundedCornerShape(12.dp),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
                             colors = ButtonDefaults.outlinedButtonColors(
                                 containerColor = CardBackground,
                                 contentColor = TextPrimary
                             ),
-                            border = ButtonDefaults.outlinedButtonBorder.copy(brush = androidx.compose.ui.graphics.SolidColor(BorderColor)),
+                            border = ButtonDefaults.outlinedButtonBorder(enabled = true).copy(brush = androidx.compose.ui.graphics.SolidColor(BorderColor)),
                             modifier = Modifier.weight(1f)
                         ) {
                             Icon(
                                 imageVector = Icons.Default.CalendarMonth,
-                                contentDescription = "Date",
+                                contentDescription = "Choisir la date",
                                 tint = AccentLime,
                                 modifier = Modifier.size(16.dp)
                             )
-                            Spacer(modifier = Modifier.width(6.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
                             val dateLabel = if (taskDueAtMillis != null) {
-                                SimpleDateFormat("MMM d", Locale.getDefault()).format(Date(taskDueAtMillis!!))
-                            } else "Set Date"
-                            Text(dateLabel, fontSize = 13.sp)
+                                SimpleDateFormat("d MMM", Locale.FRENCH).format(Date(taskDueAtMillis!!))
+                            } else "Choisir la date"
+                            Text(
+                                text = dateLabel,
+                                fontSize = 13.sp,
+                                maxLines = 1,
+                                softWrap = false,
+                                overflow = TextOverflow.Ellipsis
+                            )
                         }
 
                         // Time picker button
@@ -250,29 +376,36 @@ fun CreateOrEditDialog(
                                     },
                                     cal.get(Calendar.HOUR_OF_DAY),
                                     cal.get(Calendar.MINUTE),
-                                    false
+                                    true
                                 )
                                 timePicker.show()
                             },
                             shape = RoundedCornerShape(12.dp),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
                             colors = ButtonDefaults.outlinedButtonColors(
                                 containerColor = CardBackground,
                                 contentColor = TextPrimary
                             ),
-                            border = ButtonDefaults.outlinedButtonBorder.copy(brush = androidx.compose.ui.graphics.SolidColor(BorderColor)),
+                            border = ButtonDefaults.outlinedButtonBorder(enabled = true).copy(brush = androidx.compose.ui.graphics.SolidColor(BorderColor)),
                             modifier = Modifier.weight(1f)
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Schedule,
-                                contentDescription = "Time",
+                                contentDescription = "Choisir l'heure",
                                 tint = AccentLime,
                                 modifier = Modifier.size(16.dp)
                             )
-                            Spacer(modifier = Modifier.width(6.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
                             val timeLabel = if (taskDueAtMillis != null) {
-                                SimpleDateFormat("h:mm a", Locale.getDefault()).format(Date(taskDueAtMillis!!))
-                            } else "Set Time"
-                            Text(timeLabel, fontSize = 13.sp)
+                                SimpleDateFormat("HH:mm", Locale.FRENCH).format(Date(taskDueAtMillis!!))
+                            } else "Choisir l'heure"
+                            Text(
+                                text = timeLabel,
+                                fontSize = 13.sp,
+                                maxLines = 1,
+                                softWrap = false,
+                                overflow = TextOverflow.Ellipsis
+                            )
                         }
 
                         if (taskDueAtMillis != null) {
@@ -282,7 +415,7 @@ fun CreateOrEditDialog(
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Close,
-                                    contentDescription = "Clear due date",
+                                    contentDescription = "Effacer la date",
                                     tint = TextSecondary,
                                     modifier = Modifier.size(18.dp)
                                 )
@@ -297,7 +430,7 @@ fun CreateOrEditDialog(
                             if (taskTitle.trim().isBlank()) {
                                 taskTitleError = true
                             } else {
-                                onSaveTask(taskTitle.trim(), taskDueAtMillis)
+                                onSaveTask(taskTitle.trim(), taskDueAtMillis, taskPriority, taskCategory)
                             }
                         },
                         colors = ButtonDefaults.buttonColors(
@@ -307,19 +440,21 @@ fun CreateOrEditDialog(
                         shape = RoundedCornerShape(14.dp),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(50.dp)
+                            .defaultMinSize(minHeight = 50.dp)
                             .testTag("submit_task_button")
                     ) {
                         Text(
-                            text = if (editingTask != null) "Update Task" else "Create Task",
+                            text = if (editingTask != null) "Modifier la tâche" else "Créer la tâche",
                             fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp
+                            fontSize = 16.sp,
+                            maxLines = 1,
+                            softWrap = false
                         )
                     }
                 } else {
                     // Tab 1: Note Form
                     Text(
-                        text = "Write a Note",
+                        text = "Écrire une note",
                         style = MaterialTheme.typography.labelLarge.copy(
                             color = TextSecondary,
                             fontWeight = FontWeight.Medium
@@ -332,10 +467,10 @@ fun CreateOrEditDialog(
                             noteContent = it
                             if (it.isNotBlank()) noteContentError = false
                         },
-                        placeholder = { Text("Capture your thoughts...", color = TextMuted) },
+                        placeholder = { Text("Notez vos idées...", color = TextMuted) },
                         isError = noteContentError,
                         supportingText = if (noteContentError) {
-                            { Text("Note cannot be empty", color = StatusError) }
+                            { Text("La note ne peut pas être vide", color = StatusError) }
                         } else null,
                         minLines = 4,
                         maxLines = 6,
@@ -374,7 +509,7 @@ fun CreateOrEditDialog(
                             .testTag("submit_note_button")
                     ) {
                         Text(
-                            text = if (editingNote != null) "Update Note" else "Create Note",
+                            text = if (editingNote != null) "Modifier la note" else "Créer la note",
                             fontWeight = FontWeight.Bold,
                             fontSize = 16.sp
                         )

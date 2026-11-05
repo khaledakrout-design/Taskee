@@ -2,9 +2,12 @@ package com.example.taskee.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
@@ -12,20 +15,20 @@ import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.border
 import com.example.taskee.data.Note
-import com.example.taskee.ui.theme.AccentLight
-import com.example.taskee.ui.theme.DarkBackground
-import com.example.taskee.ui.theme.TextDark
+import com.example.taskee.ui.theme.*
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -40,6 +43,8 @@ fun NoteSwipeCard(
     onDelete: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var totalDragAmount by remember(note.id) { mutableFloatStateOf(0f) }
+
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -55,6 +60,25 @@ fun NoteSwipeCard(
                     shape = RoundedCornerShape(28.dp),
                     spotColor = AccentLight.copy(alpha = 0.4f)
                 )
+                .pointerInput(note.id) {
+                    detectHorizontalDragGestures(
+                        onDragEnd = {
+                            if (totalDragAmount < -60f) {
+                                onNext()
+                            } else if (totalDragAmount > 60f) {
+                                onPrevious()
+                            }
+                            totalDragAmount = 0f
+                        },
+                        onDragCancel = {
+                            totalDragAmount = 0f
+                        },
+                        onHorizontalDrag = { change, dragAmount ->
+                            change.consume()
+                            totalDragAmount += dragAmount
+                        }
+                    )
+                }
                 .testTag("note_card_${note.id}"),
             shape = RoundedCornerShape(28.dp),
             colors = CardDefaults.cardColors(containerColor = AccentLight)
@@ -115,11 +139,12 @@ fun NoteSwipeCard(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Content
+                // Scrollable Content
                 Box(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxWidth()
+                        .verticalScroll(rememberScrollState())
                 ) {
                     Text(
                         text = note.content,
@@ -135,7 +160,7 @@ fun NoteSwipeCard(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Bottom row: date chip
+                // Bottom row: date chip + counter
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -175,16 +200,17 @@ fun NoteSwipeCard(
             ) {
                 Box(
                     modifier = Modifier
-                        .size(44.dp)
+                        .size(48.dp)
                         .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.1f))
+                        .background(CardBackground)
+                        .border(1.dp, BorderColor, CircleShape)
                         .clickable(onClick = onPrevious),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "Previous note",
-                        tint = Color.White
+                        tint = TextPrimary
                     )
                 }
 
@@ -192,16 +218,16 @@ fun NoteSwipeCard(
 
                 Box(
                     modifier = Modifier
-                        .size(44.dp)
+                        .size(48.dp)
                         .clip(CircleShape)
-                        .background(AccentLight)
+                        .background(AccentLime)
                         .clickable(onClick = onNext),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                         contentDescription = "Next note",
-                        tint = DarkBackground
+                        tint = TextDark
                     )
                 }
             }

@@ -3,10 +3,13 @@ package com.example.taskee.ui.components
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarMonth
@@ -21,17 +24,20 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.taskee.data.Priority
+import com.example.taskee.data.TaskCategory
 import com.example.taskee.ui.theme.*
 import java.text.SimpleDateFormat
 import java.util.*
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun CreateTaskBottomSheet(
     onDismissRequest: () -> Unit,
-    onSaveTask: (title: String, dueAtMillis: Long?) -> Unit,
+    onSaveTask: (title: String, dueAtMillis: Long?, priority: Priority, category: TaskCategory) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -39,6 +45,8 @@ fun CreateTaskBottomSheet(
 
     var taskTitle by remember { mutableStateOf("") }
     var taskDueAtMillis by remember { mutableStateOf<Long?>(null) }
+    var taskPriority by remember { mutableStateOf(Priority.MEDIUM) }
+    var taskCategory by remember { mutableStateOf(TaskCategory.PERSONAL) }
     var taskTitleError by remember { mutableStateOf(false) }
 
     ModalBottomSheet(
@@ -60,6 +68,7 @@ fun CreateTaskBottomSheet(
                 .padding(horizontal = 24.dp)
                 .padding(bottom = 32.dp)
                 .navigationBarsPadding()
+                .verticalScroll(rememberScrollState())
         ) {
             // Header
             Row(
@@ -68,7 +77,7 @@ fun CreateTaskBottomSheet(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "New Task",
+                    text = "Nouvelle tâche",
                     style = MaterialTheme.typography.titleLarge.copy(
                         fontWeight = FontWeight.Bold,
                         color = TextPrimary,
@@ -82,7 +91,7 @@ fun CreateTaskBottomSheet(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Close,
-                        contentDescription = "Close sheet",
+                        contentDescription = "Fermer",
                         tint = TextSecondary
                     )
                 }
@@ -92,7 +101,7 @@ fun CreateTaskBottomSheet(
 
             // Task title input
             Text(
-                text = "Task Title",
+                text = "Titre de la tâche",
                 style = MaterialTheme.typography.labelLarge.copy(
                     color = TextSecondary,
                     fontWeight = FontWeight.Medium
@@ -105,10 +114,10 @@ fun CreateTaskBottomSheet(
                     taskTitle = it
                     if (it.isNotBlank()) taskTitleError = false
                 },
-                placeholder = { Text("What needs to be done?", color = TextMuted) },
+                placeholder = { Text("Que devez-vous faire ?", color = TextMuted) },
                 isError = taskTitleError,
                 supportingText = if (taskTitleError) {
-                    { Text("Title cannot be empty", color = StatusError) }
+                    { Text("Le titre ne peut pas être vide", color = StatusError) }
                 } else null,
                 singleLine = true,
                 colors = OutlinedTextFieldDefaults.colors(
@@ -127,9 +136,110 @@ fun CreateTaskBottomSheet(
 
             Spacer(modifier = Modifier.height(20.dp))
 
+            // Category Selection
+            Text(
+                text = "Catégorie",
+                style = MaterialTheme.typography.labelLarge.copy(
+                    color = TextSecondary,
+                    fontWeight = FontWeight.Medium
+                )
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                TaskCategory.entries.forEach { cat ->
+                    val isSelected = taskCategory == cat
+                    val catColor = when (cat) {
+                        TaskCategory.WORK -> Color(0xFFAB47BC)
+                        TaskCategory.PERSONAL -> Color(0xFF26A69A)
+                        TaskCategory.SHOPPING -> Color(0xFFFFA726)
+                        TaskCategory.HEALTH -> Color(0xFFEC407A)
+                        TaskCategory.OTHER -> Color(0xFF78909C)
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(if (isSelected) catColor.copy(alpha = 0.2f) else CardBackground)
+                            .border(
+                                width = if (isSelected) 1.5.dp else 1.dp,
+                                color = if (isSelected) catColor else BorderColor,
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                            .clickable { taskCategory = cat }
+                            .padding(horizontal = 14.dp, vertical = 8.dp)
+                            .testTag("select_category_${cat.name.lowercase()}"),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = cat.label,
+                            color = if (isSelected) catColor else TextSecondary,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                            fontSize = 13.sp,
+                            maxLines = 1
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // Priority Selection
+            Text(
+                text = "Niveau de priorité",
+                style = MaterialTheme.typography.labelLarge.copy(
+                    color = TextSecondary,
+                    fontWeight = FontWeight.Medium
+                )
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Priority.entries.forEach { p ->
+                    val isSelected = taskPriority == p
+                    val chipColor = when (p) {
+                        Priority.HIGH -> Color(0xFFEF5350)
+                        Priority.MEDIUM -> Color(0xFFFFB74D)
+                        Priority.LOW -> Color(0xFF64B5F6)
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .weight(1f, fill = false)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(if (isSelected) chipColor.copy(alpha = 0.2f) else CardBackground)
+                            .border(
+                                width = if (isSelected) 1.5.dp else 1.dp,
+                                color = if (isSelected) chipColor else BorderColor,
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                            .clickable { taskPriority = p }
+                            .padding(horizontal = 18.dp, vertical = 8.dp)
+                            .testTag("select_priority_${p.name.lowercase()}"),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = p.label,
+                            color = if (isSelected) chipColor else TextSecondary,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                            fontSize = 13.sp,
+                            maxLines = 1
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
             // Due Date & Time Section
             Text(
-                text = "Due Date & Time",
+                text = "Date & Heure d'échéance",
                 style = MaterialTheme.typography.labelLarge.copy(
                     color = TextSecondary,
                     fontWeight = FontWeight.Medium
@@ -143,7 +253,7 @@ fun CreateTaskBottomSheet(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 QuickDateChip(
-                    label = "Today",
+                    label = "Aujourd'hui",
                     onClick = {
                         val cal = Calendar.getInstance()
                         cal.set(Calendar.HOUR_OF_DAY, 18)
@@ -153,7 +263,7 @@ fun CreateTaskBottomSheet(
                     }
                 )
                 QuickDateChip(
-                    label = "Tomorrow",
+                    label = "Demain",
                     onClick = {
                         val cal = Calendar.getInstance()
                         cal.add(Calendar.DAY_OF_YEAR, 1)
@@ -164,7 +274,7 @@ fun CreateTaskBottomSheet(
                     }
                 )
                 QuickDateChip(
-                    label = "Next Week",
+                    label = "Semaine prochaine",
                     onClick = {
                         val cal = Calendar.getInstance()
                         cal.add(Calendar.WEEK_OF_YEAR, 1)
@@ -206,11 +316,12 @@ fun CreateTaskBottomSheet(
                         datePicker.show()
                     },
                     shape = RoundedCornerShape(12.dp),
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
                     colors = ButtonDefaults.outlinedButtonColors(
                         containerColor = CardBackground,
                         contentColor = TextPrimary
                     ),
-                    border = ButtonDefaults.outlinedButtonBorder.copy(
+                    border = ButtonDefaults.outlinedButtonBorder(enabled = true).copy(
                         brush = androidx.compose.ui.graphics.SolidColor(BorderColor)
                     ),
                     modifier = Modifier
@@ -219,15 +330,21 @@ fun CreateTaskBottomSheet(
                 ) {
                     Icon(
                         imageVector = Icons.Default.CalendarMonth,
-                        contentDescription = "Pick Date",
+                        contentDescription = "Choisir la date",
                         tint = AccentLime,
                         modifier = Modifier.size(16.dp)
                     )
-                    Spacer(modifier = Modifier.width(6.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
                     val dateLabel = if (taskDueAtMillis != null) {
-                        SimpleDateFormat("MMM d, yyyy", Locale.getDefault()).format(Date(taskDueAtMillis!!))
-                    } else "Set Date"
-                    Text(dateLabel, fontSize = 13.sp)
+                        SimpleDateFormat("d MMM", Locale.FRENCH).format(Date(taskDueAtMillis!!))
+                    } else "Choisir la date"
+                    Text(
+                        text = dateLabel,
+                        fontSize = 13.sp,
+                        maxLines = 1,
+                        softWrap = false,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
 
                 // Time picker button
@@ -242,16 +359,17 @@ fun CreateTaskBottomSheet(
                             },
                             cal.get(Calendar.HOUR_OF_DAY),
                             cal.get(Calendar.MINUTE),
-                            false
+                            true
                         )
                         timePicker.show()
                     },
                     shape = RoundedCornerShape(12.dp),
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
                     colors = ButtonDefaults.outlinedButtonColors(
                         containerColor = CardBackground,
                         contentColor = TextPrimary
                     ),
-                    border = ButtonDefaults.outlinedButtonBorder.copy(
+                    border = ButtonDefaults.outlinedButtonBorder(enabled = true).copy(
                         brush = androidx.compose.ui.graphics.SolidColor(BorderColor)
                     ),
                     modifier = Modifier
@@ -260,15 +378,21 @@ fun CreateTaskBottomSheet(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Schedule,
-                        contentDescription = "Pick Time",
+                        contentDescription = "Choisir l'heure",
                         tint = AccentLime,
                         modifier = Modifier.size(16.dp)
                     )
-                    Spacer(modifier = Modifier.width(6.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
                     val timeLabel = if (taskDueAtMillis != null) {
-                        SimpleDateFormat("h:mm a", Locale.getDefault()).format(Date(taskDueAtMillis!!))
-                    } else "Set Time"
-                    Text(timeLabel, fontSize = 13.sp)
+                        SimpleDateFormat("HH:mm", Locale.FRENCH).format(Date(taskDueAtMillis!!))
+                    } else "Choisir l'heure"
+                    Text(
+                        text = timeLabel,
+                        fontSize = 13.sp,
+                        maxLines = 1,
+                        softWrap = false,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
 
                 // Clear button
@@ -279,7 +403,7 @@ fun CreateTaskBottomSheet(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Close,
-                            contentDescription = "Clear due date",
+                            contentDescription = "Effacer la date",
                             tint = TextSecondary,
                             modifier = Modifier.size(18.dp)
                         )
@@ -295,7 +419,7 @@ fun CreateTaskBottomSheet(
                     if (taskTitle.trim().isBlank()) {
                         taskTitleError = true
                     } else {
-                        onSaveTask(taskTitle.trim(), taskDueAtMillis)
+                        onSaveTask(taskTitle.trim(), taskDueAtMillis, taskPriority, taskCategory)
                     }
                 },
                 colors = ButtonDefaults.buttonColors(
@@ -305,7 +429,7 @@ fun CreateTaskBottomSheet(
                 shape = RoundedCornerShape(14.dp),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(52.dp)
+                    .defaultMinSize(minHeight = 52.dp)
                     .testTag("submit_task_button")
             ) {
                 Icon(
@@ -315,9 +439,11 @@ fun CreateTaskBottomSheet(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Create Task",
+                    text = "Créer la tâche",
                     fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp
+                    fontSize = 16.sp,
+                    maxLines = 1,
+                    softWrap = false
                 )
             }
         }

@@ -2,9 +2,9 @@ package com.example.taskee.ui
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
@@ -17,12 +17,11 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.taskee.R
 import com.example.taskee.ui.components.*
 import com.example.taskee.ui.theme.*
 import kotlinx.coroutines.launch
-
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -31,6 +30,7 @@ fun TaskeeHomeScreen(
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val isDarkMode by viewModel.isDarkMode.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     var showTaskBottomSheet by remember { mutableStateOf(false) }
@@ -54,46 +54,51 @@ fun TaskeeHomeScreen(
         }
     }
 
-    Scaffold(
-        modifier = modifier
-            .fillMaxSize()
-            .testTag("home_screen"),
-        containerColor = DarkBackground,
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = {
-                    if (uiState.selectedTab == 0) {
-                        showTaskBottomSheet = true
-                    } else {
-                        viewModel.openCreate(1)
-                    }
-                },
-                containerColor = AccentLime,
-                contentColor = TextDark,
-                shape = CircleShape,
-                modifier = Modifier
-                    .size(58.dp)
-                    .testTag("add_fab")
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = if (uiState.selectedTab == 0) "Create new task" else "Create new note",
-                    modifier = Modifier.size(28.dp)
-                )
-            }
-        }
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
+    TaskeeTheme(darkTheme = isDarkMode) {
+        Scaffold(
+            modifier = modifier
                 .fillMaxSize()
-                .padding(innerPadding)
-        ) {
-            UserInfoHeader()
+                .testTag("home_screen"),
+            containerColor = DarkBackground,
+            snackbarHost = { SnackbarHost(snackbarHostState) },
+            floatingActionButton = {
+                FloatingActionButton(
+                    onClick = {
+                        if (uiState.selectedTab == 0) {
+                            showTaskBottomSheet = true
+                        } else {
+                            viewModel.openCreate(1)
+                        }
+                    },
+                    containerColor = AccentLime,
+                    contentColor = TextDark,
+                    shape = CircleShape,
+                    modifier = Modifier
+                        .size(58.dp)
+                        .testTag("add_fab")
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = if (uiState.selectedTab == 0) "Create new task" else "Create new note",
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
+            }
+        ) { innerPadding ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+            ) {
+                UserInfoHeader(
+                    isDarkMode = isDarkMode,
+                    onToggleTheme = { viewModel.toggleTheme() },
+                    onActionClick = { viewModel.openCreate() }
+                )
 
             PillTabBar(
                 selectedTab = uiState.selectedTab,
-                tasksCount = uiState.tasks.count { !it.isCompleted },
+                tasksCount = uiState.tasks.count { !it.completed },
                 notesCount = uiState.notes.size,
                 onTabSelected = { viewModel.selectTab(it) }
             )
@@ -133,11 +138,13 @@ fun TaskeeHomeScreen(
                     val safeIndex = uiState.currentNoteIndex.coerceIn(0, (uiState.notes.size - 1).coerceAtLeast(0))
                     val currentNote = uiState.notes.getOrNull(safeIndex) ?: uiState.notes.firstOrNull()
                     if (currentNote != null) {
-                        Box(
+                        Column(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .padding(bottom = 80.dp),
-                            contentAlignment = Alignment.Center
+                                .padding(bottom = 80.dp)
+                                .verticalScroll(rememberScrollState()),
+                            verticalArrangement = Arrangement.Center,
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             NoteSwipeCard(
                                 note = currentNote,
@@ -158,8 +165,8 @@ fun TaskeeHomeScreen(
     if (showTaskBottomSheet) {
         CreateTaskBottomSheet(
             onDismissRequest = { showTaskBottomSheet = false },
-            onSaveTask = { title, dueAt ->
-                viewModel.saveTask(title, dueAt)
+            onSaveTask = { title, dueAt, priority, category ->
+                viewModel.saveTask(title, dueAt, priority, category)
                 showTaskBottomSheet = false
             }
         )
@@ -171,8 +178,9 @@ fun TaskeeHomeScreen(
             editingTask = uiState.editingTask,
             editingNote = uiState.editingNote,
             onDismiss = { viewModel.closeDialog() },
-            onSaveTask = { title, dueAt -> viewModel.saveTask(title, dueAt) },
+            onSaveTask = { title, dueAt, priority, category -> viewModel.saveTask(title, dueAt, priority, category) },
             onSaveNote = { content -> viewModel.saveNote(content) }
         )
+    }
     }
 }

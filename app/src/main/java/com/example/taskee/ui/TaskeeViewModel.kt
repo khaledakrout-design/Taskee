@@ -34,6 +34,15 @@ class TaskeeViewModel(private val repository: TaskeeRepository) : ViewModel() {
     private val _editingTask = MutableStateFlow<Task?>(null)
     private val _editingNote = MutableStateFlow<Note?>(null)
     private val _lastDeletedTask = MutableStateFlow<Task?>(null)
+    private val _isDarkMode = MutableStateFlow(repository.isDarkMode())
+
+    val isDarkMode: StateFlow<Boolean> = _isDarkMode.asStateFlow()
+
+    fun toggleTheme() {
+        val newMode = !_isDarkMode.value
+        _isDarkMode.value = newMode
+        repository.setDarkMode(newMode)
+    }
 
     val uiState: StateFlow<TaskeeUiState> = combine(
         repository.tasksFlow,
@@ -137,15 +146,20 @@ class TaskeeViewModel(private val repository: TaskeeRepository) : ViewModel() {
         _lastDeletedTask.value = null
     }
 
-    fun saveTask(title: String, dueAtMillis: Long?) {
+    fun saveTask(
+        title: String,
+        dueAtMillis: Long?,
+        priority: com.example.taskee.data.Priority = com.example.taskee.data.Priority.MEDIUM,
+        category: com.example.taskee.data.TaskCategory = com.example.taskee.data.TaskCategory.PERSONAL
+    ) {
         viewModelScope.launch {
             val current = _editingTask.value
             if (current != null) {
                 repository.updateTask(
-                    current.copy(title = title, dueAtMillis = dueAtMillis)
+                    current.copy(title = title, dueAtMillis = dueAtMillis, priority = priority, category = category)
                 )
             } else {
-                repository.addTask(title, dueAtMillis)
+                repository.addTask(title, dueAtMillis, priority, category)
             }
             closeDialog()
         }

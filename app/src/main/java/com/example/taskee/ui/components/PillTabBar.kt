@@ -38,7 +38,7 @@ fun PillTabBar(
             .testTag("pill_tab_bar")
     ) {
         TabItem(
-            title = "Tasks",
+            title = "Tâches",
             count = tasksCount,
             isSelected = selectedTab == 0,
             onClick = { onTabSelected(0) },

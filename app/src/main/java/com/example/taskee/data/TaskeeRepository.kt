@@ -40,9 +40,9 @@ class TaskeeRepository(
         val now = System.currentTimeMillis()
         val oneHour = 3600_000L
         return listOf(
-            Task(id = 1L, title = "Design mobile app prototype", isCompleted = false, dueAtMillis = now + oneHour * 2),
-            Task(id = 2L, title = "Review team pull requests", isCompleted = true, dueAtMillis = now - oneHour),
-            Task(id = 3L, title = "Grocery shopping & errands", isCompleted = false, dueAtMillis = now + oneHour * 5)
+            Task(id = 1L, title = "Concevoir le prototype de l'application", completed = false, dueAtMillis = now + oneHour * 2, priority = Priority.HIGH, category = TaskCategory.WORK),
+            Task(id = 2L, title = "Revoir les pull requests de l'équipe", completed = true, dueAtMillis = now - oneHour, priority = Priority.MEDIUM, category = TaskCategory.WORK),
+            Task(id = 3L, title = "Faire les courses alimentaires et commissions", completed = false, dueAtMillis = now + oneHour * 5, priority = Priority.LOW, category = TaskCategory.SHOPPING)
         )
     }
 
@@ -51,23 +51,30 @@ class TaskeeRepository(
         return listOf(
             Note(
                 id = 1L,
-                content = "Meeting notes: Prioritize dark mode contrast and smooth animations for task completion.",
+                content = "Notes de réunion : Prioriser le contraste en mode sombre et la fluidité des animations.",
                 createdAtMillis = now - 7200_000L
             ),
             Note(
                 id = 2L,
-                content = "Ideas for next sprint: Add recurring task reminders, custom categories, and tag filtering.",
+                content = "Idées pour le prochain sprint : Ajouter des rappels récurrents, des catégories personnalisées et des filtres.",
                 createdAtMillis = now - 3600_000L
             )
         )
     }
 
-    suspend fun addTask(title: String, dueAtMillis: Long?) = withContext(Dispatchers.IO) {
+    suspend fun addTask(
+        title: String,
+        dueAtMillis: Long?,
+        priority: Priority = Priority.MEDIUM,
+        category: TaskCategory = TaskCategory.PERSONAL
+    ) = withContext(Dispatchers.IO) {
         val newTask = Task(
             id = System.currentTimeMillis(),
             title = title.trim(),
-            isCompleted = false,
-            dueAtMillis = dueAtMillis
+            completed = false,
+            dueAtMillis = dueAtMillis,
+            priority = priority,
+            category = category
         )
         taskDao.insertTask(newTask)
     }
@@ -109,5 +116,11 @@ class TaskeeRepository(
 
     fun setSelectedTab(tab: Int) {
         prefs.edit().putInt("selected_tab", tab).apply()
+    }
+
+    fun isDarkMode(): Boolean = prefs.getBoolean("is_dark_mode", true)
+
+    fun setDarkMode(enabled: Boolean) {
+        prefs.edit().putBoolean("is_dark_mode", enabled).apply()
     }
 }
